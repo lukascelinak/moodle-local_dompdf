@@ -1,0 +1,90 @@
+image:
+  name: '271411534863.dkr.ecr.us-east-2.amazonaws.com/moodleusdev:latest'
+  aws:
+    access-key: $AWS_ACCESS_KEY
+    secret-key: $AWS_SECRET_KEY
+
+definitions:
+  services:
+    mariadb:
+      image: 'mariadb:10'
+      variables:
+        MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+    mysql:
+      image: 'mysql:5.7'
+      variables:
+        MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    postgres:
+      image: 'postgres:13'
+      variables:
+        POSTGRES_USER: 'postgres'
+        POSTGRES_HOST_AUTH_METHOD: 'trust'
+  caches:
+    npm: $HOME/.npm
+
+pipelines:
+  default:
+    - step:
+        name: 'Moodle 4.1, PHP 8.1 and MariaDB 10'
+        caches:
+          - docker
+          - npm
+          - composer
+        script:
+          - setphpversion 8.1
+          - moodle-plugin-ci install --branch='MOODLE_401_STABLE'
+          - preset-start-behat
+          - moodle-plugin-ci phplint || echo ''
+          - moodle-plugin-ci phpcpd || echo ''
+          - moodle-plugin-ci phpmd || echo ''
+          - moodle-plugin-ci codechecker || echo ''
+          - moodle-plugin-ci validate || echo ''
+          - moodle-plugin-ci savepoints || echo ''
+          - moodle-plugin-ci mustache || echo ''
+          - moodle-plugin-ci grunt || echo ''
+          - moodle-plugin-ci phpdoc || echo ''
+          - moodle-plugin-ci phpunit || echo ''
+          - moodle-plugin-ci behat || echo ''
+        services:
+          - mariadb
+          - docker
+    - step:
+        name: 'Moodle 4.1, PHP 8.1 and PostgreSQL 13'
+        caches:
+          - npm
+          - composer
+        script:
+          - setphpversion 8.1
+          - moodle-plugin-ci install --db-type='pgsql' --branch='MOODLE_401_STABLE'
+          - moodle-plugin-ci phplint
+          - moodle-plugin-ci phpcpd
+          - moodle-plugin-ci phpmd
+          - moodle-plugin-ci codechecker || echo ''
+          - moodle-plugin-ci validate || echo ''
+          - moodle-plugin-ci savepoints || echo ''
+          - moodle-plugin-ci mustache || echo ''
+          - moodle-plugin-ci grunt || echo ''
+          - moodle-plugin-ci phpdoc || echo ''
+          - moodle-plugin-ci phpunit || echo ''
+        services:
+          - postgres
+    - step:
+        name: 'Moodle 4.1, PHP 8.1 and MySQL 5.7'
+        caches:
+          - npm
+          - composer
+        script:
+          - setphpversion 8.1
+          - moodle-plugin-ci install --db-type='mysqli' --branch='MOODLE_401_STABLE'
+          - moodle-plugin-ci phplint
+          - moodle-plugin-ci phpcpd
+          - moodle-plugin-ci phpmd
+          - moodle-plugin-ci codechecker || echo ''
+          - moodle-plugin-ci validate || echo ''
+          - moodle-plugin-ci savepoints || echo ''
+          - moodle-plugin-ci mustache || echo ''
+          - moodle-plugin-ci grunt || echo ''
+          - moodle-plugin-ci phpdoc || echo ''
+          - moodle-plugin-ci phpunit || echo ''
+        services:
+          - mysql
